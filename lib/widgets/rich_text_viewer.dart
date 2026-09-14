@@ -1,35 +1,60 @@
 import 'package:flutter/material.dart';
-import '../models/rich_text_content.dart'; // Sesuaikan path jika berbeda
+import 'package:flutter_math_fork/flutter_math.dart';
+import '../models/rich_text_content.dart';
 
 class RichTextViewer extends StatelessWidget {
   final List<RichTextContent> content;
-  final TextStyle defaultTextStyle;
+  final TextStyle? style;
 
   const RichTextViewer({
     super.key,
     required this.content,
-    this.defaultTextStyle = const TextStyle(fontSize: 16, color: Colors.black87, height: 1.5),
+    this.style,
   });
 
   @override
   Widget build(BuildContext context) {
     if (content.isEmpty) {
-      return const SizedBox.shrink(); // Tidak ada yang ditampilkan jika kosong
+      return const SizedBox.shrink();
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: content.map((block) => _buildBlock(context, block)).toList(),
+
+    final effectiveTextStyle = style ?? Theme.of(context).textTheme.bodyLarge?.copyWith(
+      fontSize: 16,
+      height: 1.5,
+    ) ?? const TextStyle(fontSize: 16, height: 1.5);
+
+    return Text.rich(
+      TextSpan(
+        children: content.map((block) => _buildSpan(context, block, effectiveTextStyle)).toList(),
+      ),
+      style: effectiveTextStyle,
     );
   }
 
-  Widget _buildBlock(BuildContext context, RichTextContent block) {
+  InlineSpan _buildSpan(BuildContext context, RichTextContent block, TextStyle baseStyle) {
     if (block is TextData) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
-        child: Text(block.text, style: defaultTextStyle),
+      return TextSpan(
+        text: block.text,
+        style: baseStyle.copyWith(
+          fontWeight: block.isBold ? FontWeight.bold : baseStyle.fontWeight,
+          fontStyle: block.isItalic ? FontStyle.italic : baseStyle.fontStyle,
+          decoration: block.isUnderline ? TextDecoration.underline : baseStyle.decoration,
+        ),
+      );
+    } else if (block is MathData) {
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.middle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+          child: Math.tex(
+            block.formula,
+            textStyle: baseStyle.copyWith(
+              fontSize: baseStyle.fontSize,
+            ),
+          ),
+        ),
       );
     }
-    // Tambahkan case untuk tipe blok lain di sini jika model diperluas
-    return const SizedBox.shrink();
+    return const TextSpan(text: '');
   }
 }
